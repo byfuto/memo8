@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIメモ帳</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Noto Sans JP", sans-serif; /* Changed font to Noto Sans JP */
+            background-color: #f0f2f5; /* Light gray background */
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0; /* Tailwind gray-200 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* Tailwind gray-400 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* Tailwind gray-500 */
+        }
+
+        /* Content editable styling */
+        [contenteditable]:focus {
+            outline: none;
+        }
+        [contenteditable] img {
+            max-width: 100%;
+            height: auto;
+            display: block; /* Prevents extra space below image */
+            margin: 8px 0;
+            border-radius: 8px;
+        }
+        [contenteditable] ul {
+            list-style-type: disc;
+            padding-left: 24px;
+        }
+        [contenteditable] ol {
+            list-style-type: decimal;
+            padding-left: 24px;
+        }
+        /* Basic heading styles for readability */
+        [contenteditable] h1 { font-size: 2em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+        [contenteditable] h2 { font-size: 1.5em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+        [contenteditable] h3 { font-size: 1.2em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+        [contenteditable] p { margin-bottom: 0.5em; }
+        [contenteditable] pre {
+            background-color: #e2e8f0; /* gray-200 */
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: monospace;
+            white-space: pre-wrap; /* Ensures long lines wrap */
+            word-break: break-all; /* Breaks words if necessary */
+        }
+        [contenteditable] code {
+            font-family: monospace;
+            background-color: #e2e8f0; /* gray-200 */
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        /* Modal specific styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            backdrop-filter: blur(5px); /* Blur background */
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+    <!-- Main application container -->
+    <div class="flex flex-1">
+        <!-- Sidebar for notes list -->
+        <div class="w-1/4 bg-white border-r border-gray-200 flex flex-col shadow-lg">
+            <div class="p-4 border-b border-gray-200">
+                <h1 class="text-2xl font-bold text-[#306CCF] mb-4 flex items-center">
+                    <svg class="w-7 h-7 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                    AIメモ帳
+                </h1>
+                
+                <!-- Project Filter -->
+                <div class="mb-4">
+                    <label for="project-select" class="block text-sm font-medium text-gray-700 mb-1">プロジェクトで絞り込み</label>
+                    <select id="project-select" class="w-full p-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#306CCF] focus:border-transparent transition duration-200">
+                        <option value="all">すべてのメモ</option>
+                        <!-- Projects will be loaded here dynamically -->
+                    </select>
+                </div>
+
+                <input type="text" id="search-input" placeholder="キーワード検索..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#306CCF] focus:border-transparent transition duration-200">
+                <button id="new-note-btn" class="mt-4 w-full bg-[#306CCF] hover:bg-[#205090] text-white font-medium py-2 px-4 rounded-md shadow-md transition duration-200">
+                    新しいメモを作成
+                </button>
+            </div>
+            <div id="notes-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <!-- Notes will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Main content area for note editing -->
+        <div class="flex-1 flex flex-col bg-gray-50 p-6 overflow-hidden">
+            <div class="bg-white rounded-lg shadow-xl flex-1 flex flex-col overflow-hidden">
+                <!-- Note title input - 2 Column Layout -->
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex space-x-4 mb-2">
+                        <div class="w-1/3">
+                            <label for="project-tag-input" class="block text-xs text-gray-500 mb-1">プロジェクト名</label>
+                            <input type="text" id="project-tag-input" placeholder="プロジェクト名" class="w-full text-lg font-medium text-gray-800 focus:outline-none focus:ring-0 rounded-md border border-gray-300 p-2">
+                        </div>
+                        <div class="2/3">
+                            <label for="note-title" class="block text-xs text-gray-500 mb-1">メモのタイトル</label>
+                            <input type="text" id="note-title" placeholder="メモのタイトル" class="w-full text-lg font-medium text-gray-800 focus:outline-none focus:ring-0 rounded-md border border-gray-300 p-2">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">例:プロジェクトA　メモ</p>
+                </div>
+
+                <!-- Toolbar for text formatting and file management -->
+                <div class="flex flex-wrap items-center space-x-2 p-4 border-b border-gray-200 bg-gray-50">
+                    <!-- Basic Formatting -->
+                    <button id="bold-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="太字">
+                        <strong>B</strong>
+                    </button>
+                    <button id="strikethrough-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="取り消し線">
+                        <s>S</s>
+                    </button>
+                    <button id="ul-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="箇条書き">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <button id="ol-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="番号付きリスト">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h.01M3 6h.01M3 14h.01M3 18h.01M7 6h10l4 4-4 4H7l-4-4 4-4z"></path></svg>
+                    </button>
+                    <button id="link-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="リンク挿入">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101m-.757 4.898l-4 4"></path></svg>
+                    </button>
+                    <button id="code-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="コード挿入">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16L2 12l4-4"></path></svg>
+                    </button>
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+                    <button id="add-image-btn" class="p-2 rounded-md hover:bg-gray-200 transition duration-200" title="画像を挿入">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </button>
+
+                    <!-- AI features Group -->
+                    <div class="ml-auto flex space-x-2">
+                        <button id="summarize-btn" class="bg-[#1F922C] hover:bg-[#156D20] text-white font-medium py-1.5 px-3 rounded-md shadow-md transition duration-200 text-sm" title="AIで要約">
+                            要約
+                        </button>
+                        <button id="proofread-btn" class="bg-[#D933C6] hover:bg-[#A82799] text-white font-medium py-1.5 px-3 rounded-md shadow-md transition duration-200 text-sm" title="AIで校正">
+                            校正
+                        </button>
+                        <button id="add-emoji-btn" class="bg-[#A77525] hover:bg-[#704E18] text-white font-medium py-1.5 px-3 rounded-md shadow-md transition duration-200 text-sm" title="AIで絵文字を追加">
+                            絵文字＋
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Note content editable area -->
+                <div id="note-content" contenteditable="true" class="flex-1 p-4 overflow-y-auto text-gray-700 leading-relaxed focus:outline-none">
+                    <!-- Note content will be edited here -->
+                </div>
+
+                <!-- Auto-save status -->
+                <div id="auto-save-status" class="p-2 text-right text-sm text-gray-500">
+                    <!-- Auto-save status will appear here -->
+                </div>
+
+                <!-- Action buttons -->
+                <div class="p-4 border-t border-gray-200 bg-gray-100 flex justify-end space-x-3">
+                    <button id="save-note-btn" class="bg-[#306CCF] hover:bg-[#205090] text-white font-medium py-2 px-4 rounded-md shadow-md transition duration-200">
+                        保存
+                    </button>
+                    <button id="delete-note-btn" class="bg-[#183767] hover:bg-[#0E203F] text-white font-medium py-2 px-4 rounded-md shadow-md transition duration-200">
+                        削除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="modal">
+        <div class="modal-content text-center">
+            <div class="flex justify-center items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#306CCF]"></div>
+            </div>
+            <p class="mt-4 text-lg text-gray-700">AIが処理中です...</p>
+        </div>
+    </div>
+
+    <!-- AI Result Modal (for Summary, Proofreading, Emoji) -->
+    <div id="ai-result-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-ai-result-modal">&times;</span>
+            <h2 id="ai-result-title" class="text-xl font-bold mb-4">AIによる結果</h2>
+            <div id="ai-result-content" class="text-gray-700 max-h-96 overflow-y-auto p-2 border border-gray-200 rounded-md bg-gray-50">
+                <!-- AI result will be displayed here -->
+            </div>
+            <div class="mt-4 flex justify-end space-x-2">
+                <button id="copy-ai-result-btn" class="bg-[#306CCF] hover:bg-[#205090] text-white font-medium py-1.5 px-3 rounded-md shadow-md transition duration-200 text-sm">
+                    結果をコピー
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define __app_id for consistency, though not strictly used for local-only app
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'web-designer-notepad-default';
+
+        // IndexedDB setup
+        const DB_NAME = 'WebDesignerNotepadDB';
+        const DB_VERSION = 5; // Increment version for dynamic project dropdown
+        const STORE_NOTES = 'notes';
+        const STORE_PROJECTS = 'projects'; // Store for project names and IDs
+        let dbInstance = null; // Holds the actual DB connection after it's opened
+
+        // UI Elements
+        const notesList = document.getElementById('notes-list');
+        const searchInput = document.getElementById('search-input');
+        const newNoteBtn = document.getElementById('new-note-btn');
+        const projectTagInput = document.getElementById('project-tag-input');
+        const noteTitleInput = document.getElementById('note-title');
+        const noteContentDiv = document.getElementById('note-content');
+        const saveNoteBtn = document.getElementById('save-note-btn');
+        const deleteNoteBtn = document.getElementById('delete-note-btn');
+        const boldBtn = document.getElementById('bold-btn');
+        const strikethroughBtn = document.getElementById('strikethrough-btn');
+        const ulBtn = document.getElementById('ul-btn');
+        const olBtn = document.getElementById('ol-btn');
+        const linkBtn = document.getElementById('link-btn');
+        const codeBtn = document.getElementById('code-btn');
+        const addImageBtn = document.getElementById('add-image-btn');
+        const imageUploadInput = document.getElementById('image-upload');
+
+        // AI Buttons
+        const summarizeBtn = document.getElementById('summarize-btn');
+        const proofreadBtn = document.getElementById('proofread-btn'); // Combined proofread button
+        const addEmojiBtn = document.getElementById('add-emoji-btn');
+
+        const projectSelect = document.getElementById('project-select');
+        const autoSaveStatus = document.getElementById('auto-save-status');
+
+        // Modals
+        const loadingModal = document.getElementById('loading-modal');
+        const aiResultModal = document.getElementById('ai-result-modal');
+        const closeAiResultModalBtn = document.getElementById('close-ai-result-modal');
+        const aiResultTitle = document.getElementById('ai-result-title');
+        const aiResultContentDiv = document.getElementById('ai-result-content');
+        const copyAiResultBtn = document.getElementById('copy-ai-result-btn');
+
+        let currentNoteId = null; // Stores the ID of the currently active note
+        let currentProjectIdFilter = 'all'; // Default project filter for sidebar
+        let autoSaveTimeout; // For debounce auto-save
+
+        // --- IndexedDB Functions ---
+
+        /**
+         * Initializes the IndexedDB database and returns the db instance.
+         * Ensures only one instance is opened globally.
+         * @returns {Promise<IDBDatabase>} A promise that resolves with the database instance.
+         */
+        function getDbInstance() {
+            if (dbInstance) {
+                // If dbInstance is already set (meaning DB is open), return a resolved promise with it
+                return Promise.resolve(dbInstance);
+            }
+
+            // If not open, open it and set dbInstance
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    const tempDb = event.target.result;
+                    if (!tempDb.objectStoreNames.contains(STORE_NOTES)) {
+                        tempDb.createObjectStore(STORE_NOTES, { keyPath: 'id', autoIncrement: true });
+                    }
+                    if (!tempDb.objectStoreNames.contains(STORE_PROJECTS)) {
+                        const projectStore = tempDb.createObjectStore(STORE_PROJECTS, { keyPath: 'id', autoIncrement: true });
+                        projectStore.createIndex('name', 'name', { unique: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    dbInstance = event.target.result; // Assign the opened DB to the global variable
+                    console.log("DEBUG: IndexedDB opened successfully and dbInstance assigned.");
+                    resolve(dbInstance);
+                };
+
+                request.onerror = (event) => {
+                    console.error('IndexedDB error during open:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Adds a new note to the database.
+         * @param {object} note - The note object to add.
+         * @returns {Promise<number>} A promise that resolves with the ID of the new note.
+         */
+        async function addNote(note) {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NOTES], 'readwrite');
+                const store = transaction.objectStore(STORE_NOTES);
+                const request = store.add(note);
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves all notes from the database.
+         * @returns {Promise<Array<object>>} A promise that resolves with an array of note objects.
+         */
+        async function getNotes() {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NOTES], 'readonly');
+                const store = transaction.objectStore(STORE_NOTES);
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    const sortedNotes = event.target.result.sort((a, b) => {
+                        return new Date(b.lastModifiedDate) - new Date(a.lastModifiedDate);
+                    });
+                    resolve(sortedNotes);
+                };
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves a single note by its ID.
+         * @param {number} id - The ID of the note to retrieve.
+         * @returns {Promise<object>} A promise that resolves with the note object.
+         */
+        async function getNoteById(id) {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NOTES], 'readonly');
+                const store = transaction.objectStore(STORE_NOTES);
+                const request = store.get(id);
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Updates an existing note in the database.
+         * @param {object} note - The note object to update (must contain 'id').
+         * @returns {Promise<void>} A promise that resolves when the update is complete.
+         */
+        async function updateNote(note) {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NOTES], 'readwrite');
+                const store = transaction.objectStore(STORE_NOTES);
+                const request = store.put(note);
+
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Deletes a note from the database.
+         * @param {number} id - The ID of the note to delete.
+         * @returns {Promise<void>} A promise that resolves when the deletion is complete.
+         */
+        async function deleteNote(id) {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NOTES], 'readwrite');
+                const store = transaction.objectStore(STORE_NOTES);
+                const request = store.delete(id);
+
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Adds a new project to the database if it doesn't exist.
+         * @param {string} projectName - The name of the project.
+         * @returns {Promise<number>} A promise that resolves with the ID of the project.
+         */
+        async function addOrGetProject(projectName) {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_PROJECTS], 'readwrite');
+                const store = transaction.objectStore(STORE_PROJECTS);
+                const index = store.index('name');
+                const getRequest = index.get(projectName);
+
+                getRequest.onsuccess = (event) => {
+                    const project = event.target.result;
+                    if (project) {
+                        resolve(project.id);
+                    } else {
+                        const addRequest = store.add({ name: projectName, createdAt: new Date().toISOString() });
+                        addRequest.onsuccess = (event) => resolve(event.target.result);
+                        addRequest.onerror = (event) => reject(event.target.error);
+                    }
+                };
+                getRequest.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Retrieves all projects from the database.
+         * @returns {Promise<Array<object>>} A promise that resolves with an array of project objects.
+         */
+        async function getProjects() {
+            const db = await getDbInstance(); // Ensure db is ready
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_PROJECTS], 'readonly');
+                const store = transaction.objectStore(STORE_PROJECTS);
+                const request = store.getAll();
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Checks if a project is still referenced by any notes and deletes it if not.
+         * @param {number} projectId - The ID of the project to check.
+         * @returns {Promise<void>} A promise that resolves when the check/deletion is complete.
+         */
+        async function checkAndDeleteOrphanedProject(projectId) {
+            if (!projectId) return;
+
+            const allNotes = await getNotes(); // getNotes already awaits dbPromise
+            const isProjectStillUsed = allNotes.some(note => note.projectId === projectId);
+
+            if (!isProjectStillUsed) {
+                const db = await getDbInstance(); // Ensure db is ready
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_PROJECTS], 'readwrite');
+                    const store = transaction.objectStore(STORE_PROJECTS);
+                    const request = store.delete(projectId);
+
+                    request.onsuccess = () => {
+                        console.log(`DEBUG: Project ID ${projectId} (orphaned) deleted.`);
+                        resolve();
+                    };
+                    request.onerror = (event) => {
+                        console.error(`Error deleting orphaned project ID ${projectId}:`, event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            }
+        }
+
+        // --- UI Rendering & Event Handlers ---
+
+        /**
+         * Displays notes in the sidebar, filtered by project and search term.
+         * @param {Array<object>} notes - An array of note objects to display.
+         * @param {string} [searchTerm=''] - The current search term for highlighting.
+         */
+        async function displayNotes(notes, searchTerm = '') {
+            notesList.innerHTML = ''; // Clear the list before populating
+
+            // Ensure uniqueness by ID before filtering and displaying
+            const uniqueNotesMap = new Map();
+            notes.forEach(note => uniqueNotesMap.set(note.id, note));
+            const trulyUniqueNotes = Array.from(uniqueNotesMap.values());
+
+            console.log("DEBUG: Notes fetched for display (unique by ID):", trulyUniqueNotes.map(n => n.id)); // Debug log
+
+            const filteredBySearch = trulyUniqueNotes.filter(note =>
+                (note.title && note.title.toLowerCase().includes(searchTerm)) ||
+                (note.content && note.content.toLowerCase().includes(searchTerm))
+            );
+
+            const projects = await getProjects(); // getProjects already awaits dbPromise
+            const projectMap = new Map(projects.map(p => [p.id, p.name]));
+
+            const filteredByProject = filteredBySearch.filter(note => {
+                if (currentProjectIdFilter === 'all') return true;
+                return note.projectId === parseInt(currentProjectIdFilter);
+            });
+
+            console.log("DEBUG: Notes after project and search filter:", filteredByProject.map(n => n.id)); // Debug log
+
+            if (filteredByProject.length === 0) {
+                notesList.innerHTML = '<p class="text-gray-500 text-center mt-8">メモがありません。</p>';
+                return;
+            }
+
+            filteredByProject.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'note-item bg-gray-100 hover:bg-gray-200 p-3 rounded-md cursor-pointer transition duration-200';
+                noteElement.dataset.id = note.id;
+
+                let displayTitle = note.title || '無題のメモ';
+                const projectTag = note.projectId ? `${projectMap.get(note.projectId)} ` : '';
+                displayTitle = projectTag + displayTitle;
+
+                if (searchTerm) {
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    displayTitle = displayTitle.replace(regex, '<mark class="bg-yellow-200 rounded">$1</mark>');
+                }
+
+                noteElement.innerHTML = `
+                    <h3 class="font-normal text-gray-800 truncate">${displayTitle}</h3>
+                    <p class="text-xs text-gray-500">${new Date(note.lastModifiedDate).toLocaleDateString()} ${new Date(note.lastModifiedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                `;
+                noteElement.addEventListener('click', () => loadNote(note.id));
+                notesList.appendChild(noteElement);
+            });
+        }
+
+        /**
+         * Loads a specific note into the editor.
+         * @param {number} id - The ID of the note to load.
+         */
+        async function loadNote(id) {
+            console.log("DEBUG: Loading note with ID:", id); // Debug log
+            try {
+                const note = await getNoteById(id); // getNoteById already awaits dbPromise
+                if (note) {
+                    currentNoteId = note.id;
+                    console.log("DEBUG: currentNoteId set to:", currentNoteId); // Debug log
+                    
+                    noteTitleInput.value = note.title || '';
+
+                    if (note.projectId) {
+                        const projects = await getProjects(); // getProjects already awaits dbPromise
+                        const project = projects.find(p => p.id === note.projectId);
+                        if (project) {
+                            projectTagInput.value = project.name; // Display project name without #
+                        } else {
+                            projectTagInput.value = '';
+                        }
+                    } else {
+                        projectTagInput.value = '';
+                    }
+
+                    noteContentDiv.innerHTML = autoLinkUrls(note.content || '');
+                    deleteNoteBtn.classList.remove('hidden');
+                    saveNoteBtn.textContent = '更新';
+
+                    document.querySelectorAll('.note-item').forEach(item => {
+                        item.classList.remove('bg-blue-100', 'border-l-4', 'border-blue-500');
+                    });
+                    const selectedItem = document.querySelector(`.note-item[data-id="${id}"]`);
+                    if (selectedItem) {
+                        selectedItem.classList.add('bg-blue-100', 'border-l-4', 'border-blue-500');
+                    }
+                }
+            } catch (error) {
+                    console.error('Failed to load note:', error);
+            }
+        }
+
+        /**
+         * Creates a new empty note in the editor.
+         */
+        function newNote() {
+            currentNoteId = null;
+            projectTagInput.value = '';
+            noteTitleInput.value = '';
+            noteContentDiv.innerHTML = '';
+            deleteNoteBtn.classList.add('hidden');
+            saveNoteBtn.textContent = '保存';
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('bg-blue-100', 'border-l-4', 'border-blue-500');
+            });
+            projectTagInput.focus(); // カーソル初期値をプロジェクト名フォームに
+        }
+
+        /**
+         * Saves or updates the current note.
+         */
+        async function saveOrUpdateNote() {
+            let projectNameFromInput = projectTagInput.value.trim();
+            let actualNoteTitle = noteTitleInput.value.trim();
+            let newProjectId = null;
+            let oldProjectId = null;
+
+            if (currentNoteId) {
+                const oldNote = await getNoteById(currentNoteId); // getNoteById awaits dbPromise
+                if (oldNote) {
+                    oldProjectId = oldNote.projectId;
+                }
+            }
+
+            if (projectNameFromInput) {
+                try {
+                    newProjectId = await addOrGetProject(projectNameFromInput); // addOrGetProject awaits dbPromise
+                    console.log(`DEBUG: Project '${projectNameFromInput}' handled. ID: ${newProjectId}`);
+                } catch (error) {
+                    console.error('Failed to handle project:', error);
+                    alert('プロジェクトの処理に失敗しました。');
+                    newProjectId = null;
+                }
+            }
+
+            const now = new Date().toISOString();
+            const note = {
+                title: actualNoteTitle || '無題のメモ',
+                content: noteContentDiv.innerHTML,
+                projectId: newProjectId,
+                lastModifiedDate: now
+            };
+
+            try {
+                if (currentNoteId) {
+                    note.id = currentNoteId;
+                    await updateNote(note); // updateNote awaits dbPromise
+                    console.log('DEBUG: Note UPDATED with ID:', note.id);
+                } else {
+                    const newId = await addNote(note); // addNote awaits dbPromise
+                    currentNoteId = newId;
+                    console.log('DEBUG: New note ADDED with ID:', newId);
+                }
+
+                // After saving, check if the old project is now orphaned
+                if (oldProjectId !== null && oldProjectId !== undefined && oldProjectId !== newProjectId) {
+                    console.log(`DEBUG: Checking if old project ID ${oldProjectId} is orphaned.`);
+                    await checkAndDeleteOrphanedProject(oldProjectId); // checkAndDeleteOrphanedProject awaits dbPromise
+                }
+
+                // Always refresh projects filter and notes list after save/update
+                await loadProjectsIntoFilter(); // loadProjectsIntoFilter awaits dbPromise
+                await refreshNotesList(); // refreshNotesList awaits dbPromise
+                autoSaveStatus.textContent = `保存済み: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            } catch (error) {
+                console.error('Failed to save/update note:', error);
+                autoSaveStatus.textContent = `保存失敗: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                alert('メモの保存に失敗しました。');
+            }
+        }
+
+        /**
+         * Deletes the currently loaded note.
+         * @param {number} id - The ID of the note to delete.
+         * @returns {Promise<void>} A promise that resolves when the deletion is complete.
+         */
+        async function deleteCurrentNote() {
+            if (currentNoteId && confirm('このメモを本当に削除しますか？')) {
+                try {
+                    const noteToDelete = await getNoteById(currentNoteId); // getNoteById awaits dbPromise
+                    const projectIdToDelete = noteToDelete ? noteToDelete.projectId : null;
+
+                    await deleteNote(currentNoteId); // deleteNote awaits dbPromise
+                    console.log('DEBUG: Note deleted:', currentNoteId);
+
+                    if (projectIdToDelete !== null && projectIdToDelete !== undefined) {
+                        console.log(`DEBUG: Checking if project ID ${projectIdToDelete} is orphaned after note deletion.`);
+                        await checkAndDeleteOrphanedProject(projectIdToDelete); // checkAndDeleteOrphanedProject awaits dbPromise
+                    }
+
+                    newNote();
+                    // Always refresh projects filter and notes list after deletion
+                    await loadProjectsIntoFilter(); // loadProjectsIntoFilter awaits dbPromise
+                    await refreshNotesList(); // refreshNotesList awaits dbPromise
+                } catch (error) {
+                    console.error('Failed to delete note:', error);
+                    alert('メモの削除に失敗しました。');
+                }
+            }
+        }
+
+        /**
+         * Refreshes the list of notes in the sidebar based on current search input and project filter.
+         */
+        async function refreshNotesList() {
+            const allNotes = await getNotes(); // getNotes awaits dbPromise
+            const searchTerm = searchInput.value.toLowerCase();
+
+            const filteredNotes = allNotes.filter(note =>
+                (note.title && note.title.toLowerCase().includes(searchTerm)) ||
+                (note.content && note.content.toLowerCase().includes(searchTerm))
+            );
+            displayNotes(filteredNotes, searchTerm);
+        }
+
+        /**
+         * Applies text formatting to the selected text.
+         * @param {string} command - The document.execCommand command.
+         * @param {string} [value=null] - The value for the command.
+         */
+        function formatText(command, value = null) {
+            document.execCommand(command, false, value);
+            noteContentDiv.focus();
+        }
+
+        /**
+         * Handles image file selection and insertion.
+         * @param {Event} event - The change event from the file input.
+         */
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const imageUrl = e.target.result;
+                    const img = `<img src="${imageUrl}" alt="Uploaded Image">`;
+                    document.execCommand('insertHTML', false, img);
+                    noteContentDiv.focus();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert('画像ファイルを選択してください。');
+            }
+        }
+
+        /**
+         * Automatically converts URLs in text to clickable links.
+         * Note: This is a display-only conversion. Actual storage keeps raw HTML.
+         * @param {string} htmlContent - The HTML string to process.
+         * @returns {string} The HTML string with auto-linked URLs.
+         */
+        function autoLinkUrls(htmlContent) {
+            const urlRegex = /(?<!<a[^>]*?>)(https?:\/\/[^\s"<]+)(?![^<]*?<\/a>)/g;
+            return htmlContent.replace(urlRegex, '<a href="$1" target="_blank" class="text-blue-600 hover:underline">$1</a>');
+        }
+
+        /**
+         * Inserts a link into the content editable area.
+         */
+        function insertLink() {
+            const url = prompt('リンクのURLを入力してください:');
+            if (url) {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    if (range.collapsed) {
+                        document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" class="text-blue-600 hover:underline">${url}</a>`);
+                    } else {
+                        document.execCommand('createLink', false, url);
+                    }
+                }
+            }
+            noteContentDiv.focus();
+        }
+
+        /**
+         * Inserts a pre-formatted code block.
+         */
+        function insertCodeBlock() {
+            const codeTemplate = `<pre><code>ここにコードを記述してください</code></pre>`;
+            document.execCommand('insertHTML', false, codeTemplate);
+            noteContentDiv.focus();
+            const preElement = noteContentDiv.querySelector('pre:last-child');
+            if (preElement) {
+                const codeElement = preElement.querySelector('code');
+                if (codeElement) {
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(codeElement);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }
+        }
+
+        // --- Project Management ---
+        async function loadProjectsIntoFilter() {
+            const allNotes = await getNotes(); // getNotes awaits dbPromise
+            const uniqueProjectIds = new Set();
+            allNotes.forEach(note => {
+                if (note.projectId !== null && note.projectId !== undefined) {
+                    uniqueProjectIds.add(note.projectId);
+                }
+            });
+
+            const projects = await getProjects(); // getProjects awaits dbPromise
+            const usedProjects = projects.filter(p => uniqueProjectIds.has(p.id));
+
+            projectSelect.innerHTML = '<option value="all">すべてのメモ</option>';
+            usedProjects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                projectSelect.appendChild(option);
+            });
+
+            console.log("DEBUG: Projects loaded into filter:", usedProjects.map(p => p.name)); // Debug log
+
+            if (localStorage.getItem('currentProjectIdFilter')) {
+                const storedFilter = localStorage.getItem('currentProjectIdFilter');
+                if (storedFilter === 'all' || usedProjects.some(p => p.id === parseInt(storedFilter))) {
+                    currentProjectIdFilter = storedFilter;
+                    projectSelect.value = storedFilter;
+                } else {
+                    currentProjectIdFilter = 'all';
+                    projectSelect.value = 'all';
+                    localStorage.setItem('currentProjectIdFilter', 'all');
+                }
+            } else {
+                currentProjectIdFilter = 'all';
+                projectSelect.value = 'all';
+            }
+        }
+
+        // --- AI Integration (Gemini API) ---
+        const GEMINI_API_KEY = ""; // Canvas will provide this at runtime
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+        async function callGeminiForTextTransform(type, content) {
+            if (!content) {
+                alert('処理するにはメモの内容を入力してください。');
+                return;
+            }
+
+            let prompt = '';
+            let modalTitle = '';
+
+            switch (type) {
+                case 'summarize':
+                    // 箇条書きを「・」に変更し、修正されたテキストのみを返すように調整
+                    prompt = `以下のテキストを、Webデザイナーが共有や要約に使いやすいように、簡潔な箇条書き形式で要約してください。各箇条書きの先頭には「・」を使用し、それ以外の余計な文章は含めないでください。要約されたテキストのみを返してください。\n\nテキスト:\n"${content}"`;
+                    modalTitle = 'AIによる要約';
+                    break;
+                case 'proofread_formal':
+                    // 修正されたプロンプト
+                    prompt = `以下のテキストを、丁寧でわかりやすく、社内外どちらにも適した文体に校正してください。修正されたテキストのみを返してください。\n\nテキスト:\n"${content}"`;
+                    modalTitle = 'AIによる校正'; // 統合されたタイトル
+                    break;
+                case 'proofread_casual':
+                     // 統合された校正機能なので、proofread_casualはproofread_formalと同じプロンプトを使用
+                    prompt = `以下のテキストを、丁寧でわかりやすく、社内外どちらにも適した文体に校正してください。修正されたテキストのみを返してください。\n\nテキスト:\n"${content}"`;
+                    modalTitle = 'AIによる校正'; // 統合されたタイトル
+                    break;
+                case 'add_emoji':
+                    // 絵文字追加も修正されたテキストのみを返すように調整
+                    prompt = `以下のテキストの内容に合わせて、文章の雰囲気を豊かにする絵文字を各段落や文末に自然に追加してください。絵文字はテキストの意図を補強する形で選んでください。修正されたテキストのみを返してください。\n\nテキスト:\n"${content}"`;
+                    modalTitle = 'AIによる絵文字追加';
+                    break;
+                default:
+                    console.error('Unknown AI transform type:', type);
+                    return;
+            }
+
+            showLoadingModal();
+            try {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }]
+                };
+
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log("Gemini Result:", result);
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const transformedText = result.candidates[0].content.parts[0].text;
+                    aiResultTitle.textContent = modalTitle;
+                    aiResultContentDiv.innerHTML = transformedText.replace(/\n/g, '<br>');
+                    aiResultModal.style.display = 'block';
+                } else {
+                    alert('AIが結果を生成できませんでした。');
+                }
+            } catch (error) {
+                console.error('Error with AI transformation:', error);
+                alert('AI処理中にエラーが発生しました。');
+            } finally {
+                hideLoadingModal();
+            }
+        }
+
+        // --- Modal Functions ---
+        function showLoadingModal() {
+            loadingModal.style.display = 'block';
+        }
+
+        function hideLoadingModal() {
+            loadingModal.style.display = 'none';
+        }
+
+        // --- Debounce Auto-save ---
+        function debounceSave() {
+            clearTimeout(autoSaveTimeout); // Clear previous timeout
+            autoSaveStatus.textContent = '変更中...'; // Indicate unsaved changes
+            autoSaveTimeout = setTimeout(async () => {
+                const title = noteTitleInput.value.trim();
+                const projectTag = projectTagInput.value.trim();
+                const content = noteContentDiv.innerHTML.trim();
+
+                // Only save if there's an active note OR new content has been added
+                if (currentNoteId || title || projectTag || content) {
+                    await saveOrUpdateNote();
+                } else {
+                    autoSaveStatus.textContent = '保存不要'; // No content to save
+                }
+            }, 5000); // 5 seconds debounce
+        }
+
+        // --- Event Listeners ---
+        window.onload = async () => {
+            dbInstance = getDbInstance(); // Assign the promise here
+            await dbInstance; // Await it to ensure db is initialized
+
+            await loadProjectsIntoFilter();
+            await refreshNotesList(); // This calls displayNotes with initial notes
+
+            const allNotes = await getNotes();
+            if (allNotes.length > 0) {
+                loadNote(allNotes[0].id);
+            } else {
+                newNote();
+            }
+
+            // Add input event listeners for auto-save
+            projectTagInput.addEventListener('input', debounceSave);
+            noteTitleInput.addEventListener('input', debounceSave);
+            noteContentDiv.addEventListener('input', debounceSave);
+        };
+
+        newNoteBtn.addEventListener('click', newNote);
+        saveNoteBtn.addEventListener('click', saveOrUpdateNote); // Manual save still works
+        deleteNoteBtn.addEventListener('click', deleteCurrentNote);
+        searchInput.addEventListener('input', refreshNotesList);
+
+        projectSelect.addEventListener('change', (event) => {
+            currentProjectIdFilter = event.target.value;
+            localStorage.setItem('currentProjectIdFilter', currentProjectIdFilter);
+            refreshNotesList();
+        });
+
+        boldBtn.addEventListener('click', () => formatText('bold'));
+        strikethroughBtn.addEventListener('click', () => formatText('strikeThrough'));
+        ulBtn.addEventListener('click', () => formatText('insertUnorderedList'));
+        olBtn.addEventListener('click', () => formatText('insertOrderedList'));
+        linkBtn.addEventListener('click', insertLink);
+        codeBtn.addEventListener('click', insertCodeBlock);
+
+        addImageBtn.addEventListener('click', () => imageUploadInput.click());
+        imageUploadInput.addEventListener('change', handleImageUpload);
+
+        summarizeBtn.addEventListener('click', () => callGeminiForTextTransform('summarize', noteContentDiv.innerText));
+        proofreadBtn.addEventListener('click', () => callGeminiForTextTransform('proofread_formal', noteContentDiv.innerText)); // Call proofread_formal for the combined button
+        addEmojiBtn.addEventListener('click', () => callGeminiForTextTransform('add_emoji', noteContentDiv.innerText));
+
+        closeAiResultModalBtn.addEventListener('click', () => {
+            aiResultModal.style.display = 'none';
+        });
+
+        copyAiResultBtn.addEventListener('click', () => {
+            const textToCopy = aiResultContentDiv.innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                const msg = successful ? 'コピーしました！' : 'コピーに失敗しました。';
+                alert(msg);
+            } catch (err) {
+                console.error('コピーに失敗しました:', err);
+                alert('コピーに失敗しました。');
+            }
+            document.body.removeChild(tempTextArea);
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === loadingModal) {
+                hideLoadingModal();
+            }
+            if (event.target === aiResultModal) {
+                aiResultModal.style.display = 'none';
+            }
+        });
+
+        // Ensure a final save before closing the window
+        window.addEventListener('beforeunload', () => {
+            clearTimeout(autoSaveTimeout); // Clear any pending debounce save
+            saveOrUpdateNote(); // This will run asynchronously
+        });
+    </script>
+</body>
+</html>
